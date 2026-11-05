@@ -907,6 +907,7 @@ function loadPersist(){
 }
 function persist(){
   try{
+    if(state.resetting) return;   // a reset is in flight — don't re-save anything
     localStorage.setItem(LS_KEY, JSON.stringify({
       chats: state.chats, shortlist: state.shortlist,
       approvalsState: state.approvalsState, played: state.played,
@@ -1111,8 +1112,10 @@ async function runScript(scriptId, convId){
       case "artifact": {
         const ar = { id: mid("a"), kind: step.kind, title: step.title, subtitle: step.subtitle };
         state.convArtifacts[convId] = ar;
+        /* attach the "open panel" chip to the most recent assistant bubble, open or not */
         const host = lastAssistant(msgs, false);
-        if(host && host.m) host.m.artifactRef = { title: step.title };
+        const ref = (host && host.m) || [...msgs].reverse().find(m=>m.role==="assistant");
+        if(ref) ref.artifactRef = { title: step.title };
         if(state.activeConv === convId){
           state.artifact = ar;
           if(!state.artifactOpen) state.artifactOpen = true;
@@ -2007,7 +2010,7 @@ function installEvents(){
     if(q("#newchat")) { newConversation(null, "New conversation"); return; }
     if(q("#btn-send")) { sendMessage(); return; }
     if(q("#btn-attach")) { toast("Attaching (demo)","In a real build this imports a CMA sheet, doc, or MLS export.","paperclip"); return; }
-    if(q("#reset-demo")) { localStorage.removeItem(LS_KEY); toast("Resetting demo…","Seeds restore on reload.","refresh"); setTimeout(()=>location.reload(), 450); return; }
+    if(q("#reset-demo")) { localStorage.removeItem(LS_KEY); playToken++; state.resetting = true; toast("Resetting demo…","Seeds restore on reload.","refresh"); setTimeout(()=>location.reload(), 450); return; }
 
     const sel2 = q("[data-conv]");
     if(sel2){ selectConversation(sel2.dataset.conv); return; }
